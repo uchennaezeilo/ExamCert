@@ -1,0 +1,15 @@
+
+[
+  {
+    "id": 1,
+    "question": "What does HTTP stand for?",
+    "options": ["HyperText Transfer Protocol", "HyperTest Text Process", "HighText Transfer Package", "None"],
+    "correctIndex": 0
+  },
+  {
+    "id": 2,
+    "question": "What is the capital of Nigeria?",
+    "options": ["Lagos", "Kano", "Abuja", "Port Harcourt"],
+    "correctIndex": 2
+  }
+]
