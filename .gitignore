@@ -1,0 +1,20 @@
+# Flutter
+cert_exam_app/.dart_tool/
+cert_exam_app/.idea/
+cert_exam_app/.packages
+cert_exam_app/build/
+cert_exam_app/flutter_*.png
+cert_exam_app/.flutter-plugins
+cert_exam_app/.flutter-plugins-dependencies
+cert_exam_app/.metadata
+cert_exam_app/pubspec.lock
+
+# Node.js
+cert-backend/node_modules/
+cert-backend/.env
+cert-backend/.DS_Store
+cert-backend/*.log
+
+# macOS/Linux/Windows system files
+.DS_Store
+Thumbs.db
