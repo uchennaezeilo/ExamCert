@@ -2,7 +2,6 @@ require('dotenv').config();
 const express = require('express');
 const { Pool } = require('pg');
 const cors = require('cors');
-
 const app = express();
 const port = process.env.PORT || 3000;
 
@@ -19,6 +18,8 @@ const pool = new Pool({
 });
 
 // Routes
+
+
 app.get('/questions', async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM questions ORDER BY id ASC');
@@ -58,6 +59,16 @@ app.post('/questions', async (req, res) => {
   } catch (err) {
     console.error('Error inserting question:', err);
     res.status(500).json({ error: 'Failed to insert question' });
+  }
+});
+
+app.get('/certifications', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM certifications');
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error fetching certifications:', err);
+    res.status(500).json({ error: 'Failed to fetch certifications' });
   }
 });
 

@@ -1,8 +1,7 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'db/db_helper.dart';
-import 'screens/add_question_screen.dart'; 
+import 'models/question.dart';
+import 'services/api_service.dart';
+import 'screens/certification_list_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -14,35 +13,11 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Offline Cert Exam App',
-      theme: ThemeData(
-        primarySwatch: Colors.indigo,
-        useMaterial3: true,
-      ),
-      home: HomeScreen(),
+      title: 'Certification Exam',
+      theme: ThemeData(primarySwatch: Colors.blue),
+      home:  CertificationListScreen(),
     );
   }
-}
-
-class Question {
-  final int id;
-  final String question;
-  final List<String> options;
-  final int correctIndex;
-
-  Question({
-    required this.id,
-    required this.question,
-    required this.options,
-    required this.correctIndex,
-  });
-
-  factory Question.fromJson(Map<String, dynamic> json) => Question(
-        id: json['id'],
-        question: json['question'],
-        options: List<String>.from(json['options']),
-        correctIndex: json['correctIndex'],
-      );
 }
 
 class HomeScreen extends StatefulWidget {
@@ -55,8 +30,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   List<Question> _questions = [];
   int _current = 0;
-  int _score = 0;
-  bool _quizDone = false;
+  bool _loading = true;
 
   @override
   void initState() {
@@ -66,139 +40,64 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _loadQuestions() async {
     try {
-      final data = await DBHelper.instance.getQuestions();
-      setState(() {_questions = data.map((e) => Question.fromMap(e)).toList();});
+      final data = await ApiService.fetchQuestions();
+      final loaded = data.map((e) => Question.fromMap(e)).toList();
 
-
-      print('DEBUG: Loaded ${_questions.length} questions');
+      setState(() {
+        _questions = loaded;
+        _loading = false;
+      });
     } catch (e) {
-      print('ERROR: Failed to load questions: $e');
-    }
-  }
-
-  void _submitAnswer(int index) {
-    if (_questions[_current].correctIndex == index) {
-      _score++;
-    }
-    if (_current + 1 < _questions.length) {
-      setState(() => _current++);
-    } else {
-      setState(() => _quizDone = true);
+      print('Load error: $e');
+      setState(() => _loading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_questions.isEmpty && !_quizDone) {
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text('Certification Exam Practice'),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.add),
-              tooltip: 'Add New Question',
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => const AddQuestionScreen()),
-                );
-              },
-            ),
-          ],
-        ),
-        body: const Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 20),
-              Text('Loading questions...'),
-            ],
-          ),
-        ),
+    if (_loading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
       );
     }
 
-    if (_quizDone) {
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text('Quiz Complete'),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.add),
-              tooltip: 'Add New Question',
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => const AddQuestionScreen()),
-                );
-              },
-            ),
-          ],
-        ),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text('Score: $_score / ${_questions.length}',
-                  style: const TextStyle(fontSize: 24)),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () => setState(() {
-                  _current = 0;
-                  _score = 0;
-                  _quizDone = false;
-                }),
-                child: const Text('Restart Quiz'),
-              )
-            ],
-          ),
-        ),
+    if (_questions.isEmpty) {
+      return const Scaffold(
+        body: Center(child: Text('No questions found')),
       );
     }
 
-    final question = _questions[_current];
+    final q = _questions[_current];
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Certification Exam Practice'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            tooltip: 'Add New Question',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => const AddQuestionScreen()),
-              );
-            },
-          ),
-        ],
-      ),
+      appBar: AppBar(title: const Text('Certification Practice')),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Question ${_current + 1}/${_questions.length}',
-                style: const TextStyle(fontSize: 18)),
-            const SizedBox(height: 10),
-            Text(question.question, style: const TextStyle(fontSize: 20)),
+            Text(q.question, style: const TextStyle(fontSize: 20)),
             const SizedBox(height: 20),
-            ...List.generate(question.options.length, (i) {
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6.0),
-                child: ElevatedButton(
-                  onPressed: () => _submitAnswer(i),
-                  child: Text(question.options[i]),
-                ),
-              );
-            })
+            _btn(q.optionA, 0),
+            _btn(q.optionB, 1),
+            _btn(q.optionC, 2),
+            _btn(q.optionD, 3),
+            _btn(q.optionE, 4),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _btn(String text, int idx) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: ElevatedButton(
+        onPressed: () {
+          if (_current + 1 < _questions.length) {
+            setState(() => _current++);
+          }
+        },
+        child: Text(text),
       ),
     );
   }
