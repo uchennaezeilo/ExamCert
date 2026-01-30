@@ -6,6 +6,9 @@ import 'quiz_screen.dart'; // We'll create this next
 
 class CertificationListScreen extends StatelessWidget {
   const CertificationListScreen({super.key});
+  
+
+ 
 
   @override
   Widget build(BuildContext context) {
@@ -33,7 +36,7 @@ class CertificationListScreen extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => QuizScreen(certificationId: cert.id),
+                        builder: (context) => QuizScreen(certificationId: certifications[index].id),
                       ),
                     );
                   },

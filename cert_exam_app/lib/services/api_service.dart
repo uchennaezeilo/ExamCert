@@ -5,8 +5,12 @@ import '../models/certification.dart';
 class ApiService {
   static const String baseUrl = 'http://localhost:3000';
 
-  static Future<List<Map<String, dynamic>>> fetchQuestions() async {
-    final res = await http.get(Uri.parse('$baseUrl/questions'));
+  static Future<List<Map<String, dynamic>>> fetchQuestions({int? certificationId}) async {
+    final uri = certificationId != null
+        ? Uri.parse('$baseUrl/questions?certificationId=$certificationId')
+        : Uri.parse('$baseUrl/questions');
+
+    final res = await http.get(uri);
 
     if (res.statusCode == 200) {
       final List data = jsonDecode(res.body);
@@ -20,7 +24,23 @@ class ApiService {
     final response = await http.get(Uri.parse('$baseUrl/certifications'));
     if (response.statusCode == 200) {
       List data = jsonDecode(response.body);
-      return data.map((item) => Certification.fromJson(item)).toList();
+      final List<Certification> certs = [];
+
+      for (final item in data) {
+        try {
+          if (item == null) continue;
+          if (item['id'] == null) {
+            print('Skipping certification with missing id: $item');
+            continue;
+          }
+          certs.add(Certification.fromJson(item));
+        } catch (e) {
+          // Skip invalid items but log for investigation
+          print('Skipping invalid certification item: $item — $e');
+        }
+      }
+
+      return certs;
     } else {
       throw Exception('Failed to load certifications');
     }

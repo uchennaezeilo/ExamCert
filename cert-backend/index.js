@@ -22,7 +22,18 @@ const pool = new Pool({
 
 app.get('/questions', async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM questions ORDER BY id ASC');
+    const { certificationId } = req.query;
+    let result;
+    if (certificationId) {
+      // Filter by certification_id (snake_case) when query param is present
+      result = await pool.query(
+        'SELECT * FROM questions WHERE certification_id = $1 ORDER BY id ASC',
+        [certificationId]
+      );
+    } else {
+      result = await pool.query('SELECT * FROM questions ORDER BY id ASC');
+    }
+
     res.json(result.rows);
   } catch (err) {
     console.error('Error fetching questions:', err);
@@ -64,7 +75,8 @@ app.post('/questions', async (req, res) => {
 
 app.get('/certifications', async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM certifications');
+    // Return a canonical `id` field to avoid client-side key guessing
+    const result = await pool.query('SELECT certification_id AS id, name FROM certifications ORDER BY certification_id ASC');
     res.json(result.rows);
   } catch (err) {
     console.error('Error fetching certifications:', err);
@@ -74,5 +86,5 @@ app.get('/certifications', async (req, res) => {
 
 
 app.listen(port, () => {
-  console.log(`✅ Backend running at http://localhost:${port}`);
+  console.log(`Backend running at http://localhost:${port}`);
 });
