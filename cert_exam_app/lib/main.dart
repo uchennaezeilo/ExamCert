@@ -40,7 +40,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _loadQuestions() async {
     try {
-      final data = await ApiService.fetchQuestions();
+      final data = await ApiService.fetchQuestionsByCertification(1); // Hardcoded for demo
       final loaded = data.map((e) => Question.fromMap(e)).toList();
 
       setState(() {

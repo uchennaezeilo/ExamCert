@@ -34,6 +34,7 @@ app.get('/questions', async (req, res) => {
       result = await pool.query('SELECT * FROM questions ORDER BY id ASC');
     }
 
+    console.log('DB rows:', result.rows);
     res.json(result.rows);
   } catch (err) {
     console.error('Error fetching questions:', err);
@@ -54,16 +55,16 @@ app.post('/questions', async (req, res) => {
     option_c,
     option_d,
     option_e,
-    correct_index,
+    correct_option,
   } = req.body;
 
   try {
     const result = await pool.query(
       `INSERT INTO questions 
-       (question, option_a, option_b, option_c, option_d, option_e, correct_index)
+       (question, option_a, option_b, option_c, option_d, option_e, correct_option)
        VALUES ($1,$2,$3,$4,$5,$6,$7)
        RETURNING *`,
-      [question, option_a, option_b, option_c, option_d, option_e, correct_index]
+      [question, option_a, option_b, option_c, option_d, option_e, correct_option]
     );
 
     res.status(201).json(result.rows[0]);
@@ -83,6 +84,45 @@ app.get('/certifications', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch certifications' });
   }
 });
+
+
+app.get('/certifications/:id/questions', async (req, res) => {
+  try {
+    const rawId = req.params.id;
+    const certificationId = Number(rawId);
+
+    console.log('➡️ Raw certification id:', rawId);
+    console.log('➡️ Parsed certification id:', certificationId);
+
+    const sql = `
+      SELECT 
+        id,
+        question,
+        option_a,
+        option_b,
+        option_c,
+        option_d,
+        option_e,
+        correct_option
+      FROM questions
+      WHERE certification_id = $1
+      ORDER BY id ASC
+    `;
+
+    console.log('🧾 SQL:', sql.trim());
+    console.log('🧾 SQL params:', [certificationId]);
+
+    const result = await pool.query(sql, [certificationId]);
+    res.json(result.rows);
+    console.log('DB rows:', result.rows);
+
+  } catch (err) {
+    console.error('❌ SQL error:', err);
+    res.status(500).json({ error: 'Failed to fetch questions' });
+  }
+});
+
+
 
 
 app.listen(port, () => {

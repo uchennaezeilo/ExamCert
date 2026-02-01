@@ -19,6 +19,7 @@ class _QuizScreenState extends State<QuizScreen> {
   int _score = 0;
   bool _quizFinished = false;
 
+
   @override
   void initState() {
     super.initState();
@@ -27,9 +28,9 @@ class _QuizScreenState extends State<QuizScreen> {
 
   Future<void> _loadQuestions() async {
     try {
-      final data = await ApiService.fetchQuestions(certificationId: widget.certificationId);
+      final data = await ApiService.fetchQuestionsByCertification(widget.certificationId);
       final loaded = data.map((e) => Question.fromMap(e)).toList();
-
+      
       setState(() {
         _questions = loaded;
         _selectedAnswers = List.filled(_questions.length, null);
@@ -46,12 +47,22 @@ class _QuizScreenState extends State<QuizScreen> {
 
     setState(() {
       _selectedAnswers[_current] = index;
-      if (_questions[_current].correctIndex == index) {
+      if (_questions[_current].correctOption == _getAnswerOption(index)) {
         _score++;
       }
     });
   }
 
+  String _getAnswerOption(int index) {
+    switch (index) {
+      case 0: return 'A';
+      case 1: return 'B';
+      case 2: return 'C';
+      case 3: return 'D';
+      case 4: return 'E';
+      default: return '';
+    }
+  }
   void _nextOrFinish() {
     if (_current + 1 < _questions.length) {
       setState(() => _current++);
@@ -67,6 +78,15 @@ class _QuizScreenState extends State<QuizScreen> {
         body: Center(child: CircularProgressIndicator()),
       );
     }
+
+  if (_questions.isEmpty) {
+    return const Scaffold(
+      body: Center(child: Text('No questions available')),
+    );
+  }
+
+  final question = _questions[_current]; 
+  
 
     if (_quizFinished) {
       return Scaffold(
@@ -87,6 +107,13 @@ class _QuizScreenState extends State<QuizScreen> {
             ],
           ),
         ),
+      );
+    }
+
+    if (_questions.isEmpty) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Quiz')),
+        body: const Center(child: Text('No questions available for this certification.')),
       );
     }
 
@@ -124,7 +151,8 @@ class _QuizScreenState extends State<QuizScreen> {
     Color? color;
     if (selected != null) {
       if (index == selected) {
-        color = (index == _questions[_current].correctIndex) ? Colors.green : Colors.red;
+        final isCorrect = _questions[_current].correctOption == _getAnswerOption(index);
+        color = isCorrect ? Colors.green : Colors.red;
       } else {
         color = Colors.grey.shade300;
       }

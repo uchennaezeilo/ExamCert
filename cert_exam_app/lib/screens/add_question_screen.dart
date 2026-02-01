@@ -14,7 +14,7 @@ class _AddQuestionScreenState extends State<AddQuestionScreen> {
   final List<TextEditingController> _optionControllers =
       List.generate(5, (_) => TextEditingController());
 
-  int _correctIndex = 0;
+  int _correctOption = 0;
   String _difficulty = 'medium';
   int _certificationId = 1;
 
@@ -39,7 +39,7 @@ class _AddQuestionScreenState extends State<AddQuestionScreen> {
       "option_c": _optionControllers[2].text.trim(),
       "option_d": _optionControllers[3].text.trim(),
       "option_e": _optionControllers[4].text.trim(),
-      "correct_index": _correctIndex,
+      "correct_option": _correctOption,
       "certification_id": _certificationId,
       "difficulty_level": _difficulty,
     };
@@ -57,7 +57,7 @@ class _AddQuestionScreenState extends State<AddQuestionScreen> {
         controller.clear();
       }
       setState(() {
-        _correctIndex = 0;
+        _correctOption = 0;
         _difficulty = 'medium';
         _certificationId = 1;
       });
@@ -92,7 +92,7 @@ class _AddQuestionScreenState extends State<AddQuestionScreen> {
               }),
               const SizedBox(height: 16),
               DropdownButtonFormField<int>(
-                value: _correctIndex,
+                value: _correctOption,
                 items: List.generate(
                   5,
                   (i) => DropdownMenuItem(
@@ -100,7 +100,7 @@ class _AddQuestionScreenState extends State<AddQuestionScreen> {
                     child: Text('Correct Answer: Option ${String.fromCharCode(65 + i)}'),
                   ),
                 ),
-                onChanged: (val) => setState(() => _correctIndex = val!),
+                onChanged: (val) => setState(() => _correctOption = val!),
                 decoration: const InputDecoration(labelText: 'Correct Answer'),
               ),
               const SizedBox(height: 16),

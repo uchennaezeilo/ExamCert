@@ -5,20 +5,28 @@ import '../models/certification.dart';
 class ApiService {
   static const String baseUrl = 'http://localhost:3000';
 
-  static Future<List<Map<String, dynamic>>> fetchQuestions({int? certificationId}) async {
-    final uri = certificationId != null
-        ? Uri.parse('$baseUrl/questions?certificationId=$certificationId')
-        : Uri.parse('$baseUrl/questions');
+  static Future<List<dynamic>> fetchQuestionsByCertification(int certificationId) async {
+  final url = Uri.parse(
+    'http://localhost:3000/certifications/$certificationId/questions',
+  );
 
-    final res = await http.get(uri);
+  print('➡️ REQUEST URL: $url');
+  print('➡️ certificationId: $certificationId');
 
-    if (res.statusCode == 200) {
-      final List data = jsonDecode(res.body);
-      return data.cast<Map<String, dynamic>>();
-    } else {
-      throw Exception('Failed to load questions');
-    }
+  final response = await http.get(url);
+
+  print('⬅️ RESPONSE STATUS: ${response.statusCode}');
+  print('⬅️ RESPONSE BODY: ${response.body}');
+
+  if (response.statusCode == 200) {
+    return jsonDecode(response.body);
+  } else {
+    throw Exception('Failed to load questions');
   }
+ }
+
+
+
 
    static Future<List<Certification>> fetchCertifications() async {
     final response = await http.get(Uri.parse('$baseUrl/certifications'));
