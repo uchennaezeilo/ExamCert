@@ -1,5 +1,9 @@
 require('dotenv').config();
+console.log('🔐 DB_PASSWORD type:', typeof process.env.DB_PASSWORD);
+
+
 const express = require('express');
+const auth = require('./middleware/auth');
 const { Pool } = require('pg');
 const cors = require('cors');
 const app = express();
@@ -18,6 +22,12 @@ const pool = new Pool({
 });
 
 // Routes
+const authRoutes = require('./routes/auth');
+app.use('/auth', authRoutes);
+
+const examRoutes = require('./routes/exams');
+app.use('/exams', examRoutes);
+
 
 
 app.get('/questions', async (req, res) => {
@@ -86,7 +96,11 @@ app.get('/certifications', async (req, res) => {
 });
 
 
-app.get('/certifications/:id/questions', async (req, res) => {
+
+app.get('/certifications/:id/questions', auth, async (req, res) => {
+  console.log('Headers:', req.headers);
+  console.log('Params:', req.params);
+  console.log('Query:', req.query);
   try {
     const rawId = req.params.id;
     const certificationId = Number(rawId);

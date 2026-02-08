@@ -4,15 +4,18 @@ import '../services/api_service.dart';
 
 class QuizScreen extends StatefulWidget {
   final int certificationId;
+  final String token;
 
   const QuizScreen({
     super.key,
     required this.certificationId,
+    required this.token,
   });
-
+  
   @override
   State<QuizScreen> createState() => _QuizScreenState();
 }
+
 
 class _QuizScreenState extends State<QuizScreen> {
   final List<Question> _questions = [];
@@ -24,17 +27,22 @@ class _QuizScreenState extends State<QuizScreen> {
   bool _quizFinished = false;
   String? _error;
 
+  int? _attemptId;
+  late final String token;
+
   @override
   void initState() {
     super.initState();
-    _selectedAnswers = [];
+    token = widget.token;
     _loadQuestions();
   }
 
+
+  // ---------------- LOAD QUESTIONS + START EXAM ----------------
   Future<void> _loadQuestions() async {
     try {
       final data =
-          await ApiService.fetchQuestionsByCertification(widget.certificationId);
+          await ApiService.fetchQuestionsByCertification(widget.certificationId, token);
 
       final loaded = data
           .map((e) => Question.fromMap(e))
@@ -43,45 +51,67 @@ class _QuizScreenState extends State<QuizScreen> {
 
       if (!mounted) return;
 
+      _attemptId = await ApiService.startExam(
+        widget.certificationId,
+        token,
+      );
+
       setState(() {
-        _questions.clear();
-        _questions.addAll(loaded);
+        _questions
+          ..clear()
+          ..addAll(loaded);
         _selectedAnswers = List<int?>.filled(_questions.length, null);
         _loading = false;
       });
     } catch (e) {
+      print('Error loading questions: $e');
       if (!mounted) return;
+      
+      String errorMessage = 'Failed to load questions';
+      if (e.toString().contains('Status: 500')) {
+        errorMessage = 'Server Error: The backend encountered a problem.';
+      }
+
       setState(() {
-        _error = 'Failed to load questions';
+        _error = errorMessage;
         _loading = false;
       });
     }
   }
 
   // ---------------- ANSWER SELECTION ----------------
-  void _selectAnswer(int answerIndex) {
-  if (_quizFinished) return;
+  Future<void> _selectAnswer(int answerIndex) async {
+    if (_quizFinished || _attemptId == null) return;
 
-  final previousAnswer = _selectedAnswers[_currentIndex];
-  final correct = _questions[_currentIndex].correctOption;
+    final previousAnswer = _selectedAnswers[_currentIndex];
+    final correct = _questions[_currentIndex].correctOption;
 
-  setState(() {
-    // If there was a previous answer, undo its score impact
-    if (previousAnswer != null &&
-        _optionLetter(previousAnswer) == correct) {
-      _score--;
+    setState(() {
+      // Undo previous score
+      if (previousAnswer != null &&
+          _optionLetter(previousAnswer) == correct) {
+        _score--;
+      }
+
+      _selectedAnswers[_currentIndex] = answerIndex;
+
+      if (_optionLetter(answerIndex) == correct) {
+        _score++;
+      }
+    });
+
+    try {
+      await ApiService.saveAnswer(
+        attemptId: _attemptId!,
+        questionId: _questions[_currentIndex].id,
+        selectedOption: _optionLetter(answerIndex),
+        token: token,
+      );
+    } catch (e) {
+      print('Failed to save answer: $e');
+      // Optionally, show a SnackBar to inform the user that the answer could not be saved.
     }
-
-    // Save new answer
-    _selectedAnswers[_currentIndex] = answerIndex;
-
-    // Apply new score impact
-    if (_optionLetter(answerIndex) == correct) {
-      _score++;
-    }
-  });
-}
-
+  }
 
   // ---------------- NAVIGATION ----------------
   void _goToNext() {
@@ -102,20 +132,7 @@ class _QuizScreenState extends State<QuizScreen> {
 
   // ---------------- UTILS ----------------
   String _optionLetter(int index) {
-    switch (index) {
-      case 0:
-        return 'A';
-      case 1:
-        return 'B';
-      case 2:
-        return 'C';
-      case 3:
-        return 'D';
-      case 4:
-        return 'E';
-      default:
-        return '';
-    }
+    return ['A', 'B', 'C', 'D', 'E'][index];
   }
 
   @override
@@ -133,15 +150,6 @@ class _QuizScreenState extends State<QuizScreen> {
       );
     }
 
-    if (_questions.isEmpty) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Quiz')),
-        body: const Center(
-          child: Text('No questions available for this certification.'),
-        ),
-      );
-    }
-
     if (_quizFinished) {
       return Scaffold(
         appBar: AppBar(title: const Text('Quiz Results')),
@@ -149,15 +157,11 @@ class _QuizScreenState extends State<QuizScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(
-                'Quiz Completed!',
-                style: Theme.of(context).textTheme.headlineSmall,
-              ),
+              const Text('Quiz Completed!'),
               const SizedBox(height: 16),
-              Text(
-                'Your Score: $_score / ${_questions.length}',
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
+              Text('Your Score: $_score / ${_questions.length}',
+                  style: const TextStyle(
+                      fontSize: 20, fontWeight: FontWeight.bold)),
               const SizedBox(height: 32),
               ElevatedButton(
                 onPressed: () => Navigator.pop(context),
@@ -174,9 +178,7 @@ class _QuizScreenState extends State<QuizScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          'Question ${_currentIndex + 1} of ${_questions.length}',
-        ),
+        title: Text('Question ${_currentIndex + 1} of ${_questions.length}'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
@@ -194,7 +196,6 @@ class _QuizScreenState extends State<QuizScreen> {
 
             const SizedBox(height: 24),
 
-            // ---------------- NAV BUTTONS ----------------
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -209,8 +210,7 @@ class _QuizScreenState extends State<QuizScreen> {
                           ? _finishQuiz
                           : _goToNext),
                   child: Text(
-                    _currentIndex == _questions.length - 1 ? 'Finish' : 'Next',
-                  ),
+                      _currentIndex == _questions.length - 1 ? 'Finish' : 'Next'),
                 ),
               ],
             ),
@@ -221,19 +221,17 @@ class _QuizScreenState extends State<QuizScreen> {
   }
 
   Widget _answerButton(String text, int index) {
-    if (text.trim().isEmpty) {
-      return const SizedBox.shrink();
-    }
+    if (text.trim().isEmpty) return const SizedBox.shrink();
 
     final selected = _selectedAnswers[_currentIndex];
-
     Color? background;
+
     if (selected != null) {
       if (index == selected) {
-        final isCorrect =
-            _questions[_currentIndex].correctOption ==
-                _optionLetter(index);
-        background = isCorrect ? Colors.green : Colors.red;
+        background =
+            _optionLetter(index) == _questions[_currentIndex].correctOption
+                ? Colors.green
+                : Colors.red;
       } else {
         background = Colors.grey.shade300;
       }
@@ -246,8 +244,7 @@ class _QuizScreenState extends State<QuizScreen> {
           backgroundColor: background,
           foregroundColor: Colors.black,
         ),
-        onPressed: _quizFinished ? null : () => _selectAnswer(index),
-
+        onPressed: () => _selectAnswer(index),
         child: Text(text),
       ),
     );

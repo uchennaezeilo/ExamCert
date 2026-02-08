@@ -1,7 +1,9 @@
+import 'package:cert_exam_app/screens/login_screen.dart';
 import 'package:flutter/material.dart';
 import 'models/question.dart';
 import 'services/api_service.dart';
 import 'screens/certification_list_screen.dart';
+import 'services/auth_storage.dart';
 
 void main() {
   runApp(const MyApp());
@@ -15,7 +17,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Certification Exam',
       theme: ThemeData(primarySwatch: Colors.blue),
-      home:  CertificationListScreen(),
+      home:  LoginScreen(),
     );
   }
 }
@@ -39,14 +41,22 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadQuestions() async {
+    // The corrected call in lib/main.dart
+   
     try {
-      final data = await ApiService.fetchQuestionsByCertification(1); // Hardcoded for demo
-      final loaded = data.map((e) => Question.fromMap(e)).toList();
-
-      setState(() {
-        _questions = loaded;
-        _loading = false;
-      });
+      final token = await AuthStorage.getToken();
+      if (token != null) {
+        const int certificationId = 1; // Default ID for testing
+        final data = await ApiService.fetchQuestionsByCertification(certificationId, token);
+        final loaded = data.map((e) => Question.fromMap(e)).toList();
+        setState(() {
+          _questions = loaded;
+          _loading = false;
+        });
+      } else {
+        print('User not logged in. Cannot fetch questions.');
+        setState(() => _loading = false);
+      }
     } catch (e) {
       print('Load error: $e');
       setState(() => _loading = false);

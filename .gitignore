@@ -18,3 +18,5 @@ cert-backend/*.log
 # macOS/Linux/Windows system files
 .DS_Store
 Thumbs.db
+GEMINI.md
+IMPROVEMENT_SUGGESTIONS.md

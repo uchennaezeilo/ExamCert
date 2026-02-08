@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../models/certification.dart';
 import 'quiz_screen.dart'; // We'll create this next
+import '../services/auth_storage.dart';
 
 class CertificationListScreen extends StatelessWidget {
   const CertificationListScreen({super.key});
+ 
   
 
  
@@ -32,13 +34,16 @@ class CertificationListScreen extends StatelessWidget {
                 return ListTile(
                   title: Text(cert.name),
                   trailing: const Icon(Icons.arrow_forward),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => QuizScreen(certificationId: certifications[index].id),
-                      ),
-                    );
+                  onTap: () async {
+                    final token = await AuthStorage.getToken();
+                    if (context.mounted && token != null) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => QuizScreen(certificationId: certifications[index].id, token: token),
+                        ),
+                      );
+                    }
                   },
                 );
               },
