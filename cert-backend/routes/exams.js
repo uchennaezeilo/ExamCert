@@ -12,7 +12,7 @@ const pool = new Pool({
 });
 
 // START EXAM
-router.post('/start', auth, async (req, res) => {
+/* router.post('/start', auth, async (req, res) => {
    // 1. Check if user is authenticated
   if (!req.user) {
     return res.status(401).json({ message: 'User not authenticated' });
@@ -37,11 +37,53 @@ router.post('/start', auth, async (req, res) => {
     res.status(500).json({ error: 'Failed to start exam' });
   }
 });
+*/
+
+router.post('/start', auth, async (req, res) => {
+  const userId = req.user.userId;
+  const { certificationId } = req.body;
+
+  try {
+    // 1️⃣ Check for active exam
+    const existing = await pool.query(
+      `
+      SELECT id FROM exam_attempts
+      WHERE user_id = $1
+        AND certification_id = $2
+        AND attempt_status = 'IN_PROGRESS'
+      LIMIT 1
+      `,
+      [userId, certificationId]
+    );
+
+    if (existing.rows.length > 0) {
+      return res.json({ attemptId: existing.rows[0].id, resumed: true });
+    }
+
+    // 2️⃣ Create new attempt
+    const result = await pool.query(
+      `
+      INSERT INTO exam_attempts
+        (user_id, certification_id, started_at, attempt_status, current_question)
+      VALUES
+        ($1, $2, NOW(), 'IN_PROGRESS', 0)
+      RETURNING id
+      `,
+      [userId, certificationId]
+    );
+
+    res.json({ attemptId: result.rows[0].id, resumed: false });
+
+  } catch (err) {
+    console.error('Start exam error:', err);
+    res.status(500).json({ error: 'Failed to start exam' });
+  }
+});
 
 
 // SAVE ANSWER
 router.post('/answer', auth, async (req, res) => {
-  const { attemptId, questionId, selectedOption } = req.body;
+  const { attemptId, questionId, selectedOption, currentQuestion  } = req.body;
 
   try {
     await pool.query(
@@ -52,6 +94,17 @@ router.post('/answer', auth, async (req, res) => {
       DO UPDATE SET selected_option = EXCLUDED.selected_option
       `,
       [attemptId, questionId, selectedOption]
+    );
+
+    
+
+    await pool.query(
+      `
+      UPDATE exam_attempts
+      SET current_question = $1
+      WHERE id = $2
+      `,
+      [currentQuestion, attemptId]
     );
 
     res.json({ success: true });
@@ -103,12 +156,13 @@ router.post('/finish', auth, async (req, res) => {
 
 //RESUME ACTIVE EXAM
 router.get('/active', auth, async (req, res) => {
-  const userId = req.user.id;
+  const userId = req.user.userId;
 
   const attempt = await pool.query(
     `
     SELECT * FROM exam_attempts
-    WHERE user_id = $1 AND finished_at IS NULL
+    WHERE user_id = $1 AND attempt_status = 'IN_PROGRESS'
+    ORDER BY started_at DESC
     LIMIT 1
     `,
     [userId]
@@ -129,9 +183,10 @@ router.get('/active', auth, async (req, res) => {
 
   res.json({
     attempt: attempt.rows[0],
-    answers: answers.rows,
+    answers: answers.rows
   });
 });
+
 
 //EXAM HISTPORY
 router.get('/history', auth, async (req, res) => {

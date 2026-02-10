@@ -1,8 +1,9 @@
 
 import 'package:flutter/material.dart';
 import 'package:cert_exam_app/services/api_service.dart';
-import 'package:cert_exam_app/screens/certification_list_screen.dart';
+import 'package:cert_exam_app/services/auth_storage.dart';
 import 'package:cert_exam_app/screens/signup_screen.dart';
+import 'package:cert_exam_app/main.dart';
 
 class LoginScreen extends StatefulWidget {
   @override
@@ -82,9 +83,10 @@ class _LoginScreenState extends State<LoginScreen> {
           _passwordController.text,
         );
         if (response['token'] != null) {
+          await AuthStorage.saveEmail(_emailController.text);
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => CertificationListScreen()),
+            MaterialPageRoute(builder: (context) => const HomeScreen()),
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -92,8 +94,9 @@ class _LoginScreenState extends State<LoginScreen> {
           );
         }
       } catch (e) {
+        final msg = e.toString().replaceAll('Exception: ', '');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to login: $e')),
+          SnackBar(content: Text(msg)),
         );
       } finally {
         setState(() {

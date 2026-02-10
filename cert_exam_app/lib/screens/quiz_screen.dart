@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/question.dart';
 import '../services/api_service.dart';
@@ -6,11 +7,13 @@ class QuizScreen extends StatefulWidget {
   final int certificationId;
   final String token;
 
+
+
   const QuizScreen({
     super.key,
     required this.certificationId,
     required this.token,
-  });
+  }); 
   
   @override
   State<QuizScreen> createState() => _QuizScreenState();
@@ -25,16 +28,27 @@ class _QuizScreenState extends State<QuizScreen> {
   int _score = 0;
   bool _loading = true;
   bool _quizFinished = false;
+  bool _reviewMode = false;
+  
   String? _error;
 
   int? _attemptId;
   late final String token;
+
+  Timer? _timer;
+  int _remainingSeconds = 1800; // 30 minutes
 
   @override
   void initState() {
     super.initState();
     token = widget.token;
     _loadQuestions();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
   }
 
 
@@ -63,6 +77,7 @@ class _QuizScreenState extends State<QuizScreen> {
         _selectedAnswers = List<int?>.filled(_questions.length, null);
         _loading = false;
       });
+      _startTimer();
     } catch (e) {
       print('Error loading questions: $e');
       if (!mounted) return;
@@ -77,6 +92,18 @@ class _QuizScreenState extends State<QuizScreen> {
         _loading = false;
       });
     }
+  }
+
+  void _startTimer() {
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_remainingSeconds > 0) {
+        setState(() {
+          _remainingSeconds--;
+        });
+      } else {
+        _finishQuiz();
+      }
+    });
   }
 
   // ---------------- ANSWER SELECTION ----------------
@@ -105,6 +132,7 @@ class _QuizScreenState extends State<QuizScreen> {
         attemptId: _attemptId!,
         questionId: _questions[_currentIndex].id,
         selectedOption: _optionLetter(answerIndex),
+        currentQuestion: _questions[_currentIndex].id,
         token: token,
       );
     } catch (e) {
@@ -127,12 +155,19 @@ class _QuizScreenState extends State<QuizScreen> {
   }
 
   void _finishQuiz() {
+    _timer?.cancel();
     setState(() => _quizFinished = true);
   }
 
   // ---------------- UTILS ----------------
   String _optionLetter(int index) {
     return ['A', 'B', 'C', 'D', 'E'][index];
+  }
+
+  String get _timerText {
+    final minutes = (_remainingSeconds ~/ 60).toString().padLeft(2, '0');
+    final seconds = (_remainingSeconds % 60).toString().padLeft(2, '0');
+    return '$minutes:$seconds';
   }
 
   @override
@@ -150,7 +185,7 @@ class _QuizScreenState extends State<QuizScreen> {
       );
     }
 
-    if (_quizFinished) {
+    if (_quizFinished && !_reviewMode) {
       return Scaffold(
         appBar: AppBar(title: const Text('Quiz Results')),
         body: Center(
@@ -163,6 +198,16 @@ class _QuizScreenState extends State<QuizScreen> {
                   style: const TextStyle(
                       fontSize: 20, fontWeight: FontWeight.bold)),
               const SizedBox(height: 32),
+              ElevatedButton(
+                onPressed: () {
+                  setState(() {
+                    _reviewMode = true;
+                    _currentIndex = 0;
+                  });
+                },
+                child: const Text('Review Answers'),
+              ),
+              const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: () => Navigator.pop(context),
                 child: const Text('Back to Exams'),
@@ -178,7 +223,21 @@ class _QuizScreenState extends State<QuizScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Question ${_currentIndex + 1} of ${_questions.length}'),
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('Q ${_currentIndex + 1}/${_questions.length}'),
+            if (!_reviewMode)
+              Text(
+                _timerText,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: _remainingSeconds < 60 ? Colors.red : null,
+                ),
+              ),
+            if (_reviewMode) const Text('Review Mode', style: TextStyle(fontSize: 14)),
+          ],
+        ),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
@@ -206,11 +265,12 @@ class _QuizScreenState extends State<QuizScreen> {
                 ElevatedButton(
                   onPressed: selected == null
                       ? null
-                      : (_currentIndex == _questions.length - 1
-                          ? _finishQuiz
+                      : (_currentIndex == _questions.length - 1 && !_reviewMode
+                          ? _finishQuiz 
                           : _goToNext),
-                  child: Text(
-                      _currentIndex == _questions.length - 1 ? 'Finish' : 'Next'),
+                  child: Text(_currentIndex == _questions.length - 1 
+                      ? (_reviewMode ? 'Exit Review' : 'Finish') 
+                      : 'Next'),
                 ),
               ],
             ),
@@ -224,12 +284,22 @@ class _QuizScreenState extends State<QuizScreen> {
     if (text.trim().isEmpty) return const SizedBox.shrink();
 
     final selected = _selectedAnswers[_currentIndex];
+    final correctOption = _questions[_currentIndex].correctOption;
+    final currentOptionLetter = _optionLetter(index);
     Color? background;
 
-    if (selected != null) {
+    if (_reviewMode) {
+      if (currentOptionLetter == correctOption) {
+        background = Colors.green.shade300; // Always show correct answer in green
+      } else if (selected == index) {
+        background = Colors.red.shade300; // Show wrong selection in red
+      } else {
+        background = Colors.grey.shade200;
+      }
+    } else if (selected != null) {
       if (index == selected) {
         background =
-            _optionLetter(index) == _questions[_currentIndex].correctOption
+            currentOptionLetter == correctOption
                 ? Colors.green
                 : Colors.red;
       } else {
@@ -244,7 +314,9 @@ class _QuizScreenState extends State<QuizScreen> {
           backgroundColor: background,
           foregroundColor: Colors.black,
         ),
-        onPressed: () => _selectAnswer(index),
+        onPressed: _reviewMode 
+            ? null 
+            : () => _selectAnswer(index),
         child: Text(text),
       ),
     );
