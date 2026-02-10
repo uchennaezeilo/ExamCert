@@ -4,15 +4,29 @@ import 'package:cert_exam_app/widgets/app_drawer.dart';
 import 'package:cert_exam_app/models/exam_attempt.dart';
 import 'package:cert_exam_app/services/api_service.dart';
 import 'package:cert_exam_app/screens/certification_list_screen.dart';
+import 'package:cert_exam_app/services/auth_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.light);
 
-void main() {
-  runApp(const MyApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // 1. Load saved theme preference
+  final prefs = await SharedPreferences.getInstance();
+  final isDark = prefs.getBool('is_dark_mode') ?? false;
+  themeNotifier.value = isDark ? ThemeMode.dark : ThemeMode.light;
+
+  // 2. Check for existing login session
+  final token = await AuthStorage.getToken();
+  final Widget startScreen = token != null ? const HomeScreen() : LoginScreen();
+
+  runApp(MyApp(startScreen: startScreen));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final Widget startScreen;
+  const MyApp({super.key, required this.startScreen});
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +38,7 @@ class MyApp extends StatelessWidget {
           theme: ThemeData(primarySwatch: Colors.blue),
           darkTheme: ThemeData.dark(),
           themeMode: currentMode,
-          home: LoginScreen(),
+          home: startScreen,
         );
       },
     );

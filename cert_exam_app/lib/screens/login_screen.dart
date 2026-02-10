@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:cert_exam_app/services/api_service.dart';
 import 'package:cert_exam_app/services/auth_storage.dart';
 import 'package:cert_exam_app/screens/signup_screen.dart';
+import 'package:cert_exam_app/screens/forgot_password_screen.dart';
 import 'package:cert_exam_app/main.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -49,7 +50,20 @@ class _LoginScreenState extends State<LoginScreen> {
                   return null;
                 },
               ),
-              SizedBox(height: 20),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const ForgotPasswordScreen()),
+                    );
+                  },
+                  child: const Text('Forgot Password?'),
+                ),
+              ),
+              const SizedBox(height: 20),
               _isLoading
                   ? CircularProgressIndicator()
                   : ElevatedButton(

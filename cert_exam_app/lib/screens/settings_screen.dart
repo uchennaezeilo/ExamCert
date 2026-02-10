@@ -18,7 +18,6 @@ class SettingsScreen extends StatelessWidget {
                 title: Text(mode == ThemeMode.dark ? 'Light Mode' : 'Dark Mode'),
                 secondary: const Icon(Icons.dark_mode),
                 value: mode == ThemeMode.dark,
-                onChanged: (val) {
                 onChanged: (val) async {
                   themeNotifier.value = val ? ThemeMode.dark : ThemeMode.light;
                   final prefs = await SharedPreferences.getInstance();
