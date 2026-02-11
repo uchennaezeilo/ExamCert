@@ -1,11 +1,11 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/certification.dart';
-import '../models/exam_attempt.dart';
+import '../models/exam_attempt.dart'; 
 import 'auth_storage.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://localhost:3000';
+  static const String baseUrl = 'http://127.0.0.1:3000/api';
 
   static Future<Map<String, dynamic>> login(String email, String password) async {
     final response = await http.post(
@@ -55,12 +55,55 @@ class ApiService {
     }
   }
 
+  static Future<void> forgotPassword(String email) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/auth/forgot-password'),
+      headers: <String, String>{
+        'Content-Type': 'application/json; charset=UTF-8',
+      },
+      body: jsonEncode(<String, String>{'email': email}),
+    );
+
+    if (response.statusCode != 200) {
+      String msg = 'Failed to process request';
+      try {
+        final body = jsonDecode(response.body);
+        if (body['message'] != null) msg = body['message'];
+      } catch (_) {}
+      throw Exception(msg);
+    }
+  }
+
+  static Future<void> changePassword(String currentPassword, String newPassword) async {
+    final token = await AuthStorage.getToken();
+    final response = await http.post(
+      Uri.parse('$baseUrl/auth/change-password'),
+      headers: <String, String>{
+        'Content-Type': 'application/json; charset=UTF-8',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode(<String, String>{
+        'currentPassword': currentPassword,
+        'newPassword': newPassword,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      String msg = 'Failed to change password';
+      try {
+        final body = jsonDecode(response.body);
+        if (body['message'] != null) msg = body['message'];
+      } catch (_) {}
+      throw Exception(msg);
+    }
+  }
+
   static Future<List<dynamic>> fetchQuestionsByCertification(
     int certificationId, 
     String token,
   ) async {
     final url = Uri.parse(
-      'http://localhost:3000/certifications/$certificationId/questions',
+      '$baseUrl/certifications/$certificationId/questions',
     );
 
     print('➡️ REQUEST URL: $url');

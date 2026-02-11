@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/api_service.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -20,28 +21,37 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     }
 
     setState(() => _isLoading = true);
-    // Simulate network request
-    await Future.delayed(const Duration(seconds: 2));
 
-    if (mounted) {
-      setState(() => _isLoading = false);
-      showDialog(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Check your email'),
-          content: const Text(
-              'If an account exists for this email, we have sent password reset instructions.'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(ctx); // Close dialog
-                Navigator.pop(context); // Go back to login
-              },
-              child: const Text('OK'),
-            ),
-          ],
-        ),
-      );
+    try {
+      await ApiService.forgotPassword(_emailController.text);
+
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Check your email'),
+            content: const Text(
+                'If an account exists for this email, we have sent password reset instructions.'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(ctx); // Close dialog
+                  Navigator.pop(context); // Go back to login
+                },
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
