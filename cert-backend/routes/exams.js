@@ -1,15 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
-const { Pool } = require('pg');
-
-const pool = new Pool({
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  host: process.env.DB_HOST,
-  port: process.env.DB_PORT,
-  database: process.env.DB_NAME,
-});
+const pool = require('../db');
 
 // START EXAM
 /* router.post('/start', auth, async (req, res) => {
@@ -211,5 +203,53 @@ router.get('/history', auth, async (req, res) => {
   res.json(result.rows);
 });
 
+
+// EXAM REVIEW (Get details of a finished exam)
+router.get('/:id/review', auth, async (req, res) => {
+  const userId = req.user.userId;
+  const attemptId = req.params.id;
+
+  try {
+    // 1. Verify attempt belongs to user
+    const attemptCheck = await pool.query(
+      'SELECT user_id FROM exam_attempts WHERE id = $1',
+      [attemptId]
+    );
+
+    if (attemptCheck.rows.length === 0) {
+      return res.status(404).json({ message: 'Attempt not found' });
+    }
+
+    if (attemptCheck.rows[0].user_id !== userId) {
+      return res.status(403).json({ message: 'Unauthorized' });
+    }
+
+    // 2. Fetch questions with user answers and correct answers
+    const result = await pool.query(
+      `
+      SELECT 
+        q.id, 
+        q.question, 
+        q.option_a, 
+        q.option_b, 
+        q.option_c, 
+        q.option_d, 
+        q.option_e, 
+        q.correct_option,
+        ea.selected_option
+      FROM exam_answers ea
+      JOIN questions q ON ea.question_id = q.id
+      WHERE ea.attempt_id = $1
+      ORDER BY q.id ASC
+      `,
+      [attemptId]
+    );
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Exam review error:', err);
+    res.status(500).json({ error: 'Failed to fetch exam review' });
+  }
+});
 
 module.exports = router;

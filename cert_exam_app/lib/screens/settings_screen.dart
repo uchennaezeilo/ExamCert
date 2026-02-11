@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cert_exam_app/main.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'change_password_screen.dart';
+import 'exam_history_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -24,6 +25,16 @@ class SettingsScreen extends StatelessWidget {
                   final prefs = await SharedPreferences.getInstance();
                   await prefs.setBool('is_dark_mode', val);
                 },
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.history),
+            title: const Text('Exam History'),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ExamHistoryScreen()),
               );
             },
           ),
