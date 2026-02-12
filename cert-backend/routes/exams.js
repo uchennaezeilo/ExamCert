@@ -36,23 +36,7 @@ router.post('/start', auth, async (req, res) => {
   const { certificationId } = req.body;
 
   try {
-    // 1️⃣ Check for active exam
-    const existing = await pool.query(
-      `
-      SELECT id FROM exam_attempts
-      WHERE user_id = $1
-        AND certification_id = $2
-        AND attempt_status = 'IN_PROGRESS'
-      LIMIT 1
-      `,
-      [userId, certificationId]
-    );
-
-    if (existing.rows.length > 0) {
-      return res.json({ attemptId: existing.rows[0].id, resumed: true });
-    }
-
-    // 2️⃣ Create new attempt
+    // Always create new attempt
     const result = await pool.query(
       `
       INSERT INTO exam_attempts

@@ -154,16 +154,23 @@ class _QuizScreenState extends State<QuizScreen> {
     }
   }
 
-  void _finishQuiz() {
+  Future<void> _finishQuiz() async {
     _timer?.cancel();
-    setState(() => _quizFinished = true);
+    try {
+      if (_attemptId != null) {
+        await ApiService.finishExam(_attemptId!, token);
+      }
+    } catch (e) {
+      print('Error finishing exam: $e');
+    }
+    if (mounted) setState(() => _quizFinished = true);
   }
 
   // ---------------- UTILS ----------------
   String _optionLetter(int index) {
     return ['A', 'B', 'C', 'D', 'E'][index];
   }
-
+ 
   String get _timerText {
     final minutes = (_remainingSeconds ~/ 60).toString().padLeft(2, '0');
     final seconds = (_remainingSeconds % 60).toString().padLeft(2, '0');

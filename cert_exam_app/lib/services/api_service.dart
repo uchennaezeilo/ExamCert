@@ -134,7 +134,10 @@ class ApiService {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
       },
-      body: jsonEncode({'certificationId': certificationId}),
+      body: jsonEncode({
+        'certificationId': certificationId,
+        'status': 'IN_PROGRESS',
+      }),
     );
 
     if (res.statusCode >= 200 && res.statusCode < 300) {
@@ -250,6 +253,26 @@ class ApiService {
       throw Exception('Failed to load exam review');
     }
   }
+
+    static Future<void> finishExam(int attemptId, String token) async {
+    final url = Uri.parse('$baseUrl/exams/finish');
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({
+        'attemptId': attemptId,
+        'status': 'COMPLETED',
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to finish exam: ${response.body}');
+    }
+  }
+
 
 
 
