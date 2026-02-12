@@ -62,7 +62,7 @@ router.post('/answer', auth, async (req, res) => {
   const { attemptId, questionId, selectedOption, currentQuestion  } = req.body;
 
   try {
-    await pool.query(
+    await pool.query( 
       `
       INSERT INTO exam_answers (attempt_id, question_id, selected_option)
       VALUES ($1, $2, $3)
